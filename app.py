@@ -2,9 +2,8 @@
 
 import streamlit as st
 
-from generator import make_copy
-from llm_client import LLMError
-from prompts import CHANNEL_LABELS, PERSONAS
+from generator import generate
+from prompts import CHANNEL_LABELS, NO_PERSONA, PERSONAS
 
 st.set_page_config(page_title="A/B 마케팅 문구 생성기", page_icon="✍️")
 st.title("✍️ A/B 마케팅 문구 생성기")
@@ -15,22 +14,22 @@ description = st.text_area(
     "상품 설명",
     placeholder="예: 수제 가죽 카드지갑, 슬림형, 카드 6장 수납, 2만원대",
 )
-persona = st.selectbox("타깃 페르소나", PERSONAS)
+persona = st.selectbox("타깃 페르소나", [NO_PERSONA] + PERSONAS)
 
-# 한 번 만든 결과는 화면이 다시 그려져도 남도록 session_state에 보관
+# 검사·AI 호출·오류 처리는 generate()가 모두 맡는다. (어떤 경우에도 예외 없이 결과만 돌려준다)
+# 결과는 화면이 다시 그려져도 남도록 session_state에 보관하고, 버튼을 누를 때마다 통째로 교체한다.
 if st.button("카피 만들기", type="primary"):
-    if not description.strip():
-        st.session_state.pop("result", None)
-        st.warning("상품 설명을 입력해 주세요.")
-    else:
-        try:
-            with st.spinner("문구를 만드는 중..."):
-                st.session_state["result"] = make_copy(description, persona)
-        except LLMError as e:  # 메시지에는 API 키가 들어 있지 않다
-            st.session_state.pop("result", None)
-            st.warning(str(e))
+    with st.spinner("문구를 만드는 중..."):
+        st.session_state["output"] = generate(description, persona)
 
-result = st.session_state.get("result")
+output = st.session_state.get("output")
+result = None
+if output:
+    if output["warning"]:
+        st.warning(output["warning"])
+    if output["notice"]:
+        st.info(output["notice"])
+    result = output["result"]
 if result:
     st.caption("사용한 구조: {}".format(result["framework"]))
     col_a, col_b = st.columns(2)

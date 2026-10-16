@@ -4,7 +4,9 @@
 """
 
 import json
+import re
 
+from input_check import check_input
 from llm_client import LLMError, ask_llm
 from prompts import CHANNEL_LABELS, CHANNEL_LIMITS, EMAIL_AD_PREFIX, build_prompt
 
@@ -83,7 +85,7 @@ def make_copy(description: str, persona: str, framework: str = "자동") -> dict
             raise LLMError("AI 답변에 A안/B안이 빠져 있습니다. 다시 시도해 주세요.")
         v["angle"] = _read_text(lambda: v["angle"])
         v["copy"] = _read_text(lambda: v["copy"])
-        v["hypothesis"] = _read_text(lambda: v["hypothesis"])
+        v["hypothesis"] = _clean_hypothesis(_read_text(lambda: v["hypothesis"]))
         ch = v.get("channels") if isinstance(v.get("channels"), dict) else {}
         insta = ch.get("instagram") if isinstance(ch.get("instagram"), dict) else {}
         v["channels"] = {
@@ -98,6 +100,47 @@ def make_copy(description: str, persona: str, framework: str = "자동") -> dict
 
     result.setdefault("framework", framework)
     return result
+
+
+UNKNOWN_ERROR_MESSAGE = "알 수 없는 오류가 났어요. 다시 시도해 주세요."
+
+# 화면이 이미 "A안: "을 붙이므로, AI가 가설 문장 앞에 쓴 "A안은", "A안이 검증하는 CTR 가설은" 같은 머리말
+_HYPOTHESIS_PREFIXES = [
+    re.compile(r"^[AaBb]안\s*(?:이|은|는|가)?\s*검증하는\s*CTR\s*가설\s*(?:은|는|이|:|：)?\s*"),
+    re.compile(r"^[AaBb]안\s*(?:은|는|이|가|의)\s+"),
+    re.compile(r"^[AaBb]안\s*[:：\-]\s*"),
+    re.compile(r"^CTR\s*가설\s*(?:은|는|이|:|：)\s*"),
+]
+
+
+def _clean_hypothesis(text):
+    """가설 문장 앞의 겹치는 머리말을 지운다. 다 지워서 빈 문장이 되면 원래 문장을 돌려준다."""
+    cleaned = text.strip()
+    changed = True
+    while changed:
+        changed = False
+        for pattern in _HYPOTHESIS_PREFIXES:
+            new = pattern.sub("", cleaned, count=1)
+            if new != cleaned:
+                cleaned, changed = new, True
+    return cleaned or text.strip()
+
+
+def generate(description, persona, framework="자동"):
+    """입력 검사 → 문구 생성. 어떤 경우에도 예외를 밖으로 내보내지 않는다.
+
+    결과 모양: {"ok": bool, "result": 문구 결과 또는 None, "warning": 경고 한 줄 또는 None, "notice": 안내 한 줄 또는 None}
+    """
+    try:
+        checked = check_input(description, persona)
+        if not checked["ok"]:  # 검사에 걸리면 AI를 부르지 않는다
+            return {"ok": False, "result": None, "warning": checked["warning"], "notice": None}
+        result = make_copy(checked["description"], checked["persona"], framework)
+        return {"ok": True, "result": result, "warning": None, "notice": checked["notice"]}
+    except LLMError as e:  # 메시지에 API 키는 들어 있지 않다
+        return {"ok": False, "result": None, "warning": str(e), "notice": None}
+    except Exception:  # 예상 못 한 오류: 내용은 화면에 내보내지 않는다
+        return {"ok": False, "result": None, "warning": UNKNOWN_ERROR_MESSAGE, "notice": None}
 
 
 if __name__ == "__main__":
