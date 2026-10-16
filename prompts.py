@@ -11,6 +11,25 @@ PERSONAS = [
 ]
 DEFAULT_PERSONA = PERSONAS[0]
 
+# 채널별 글자 수 제한 - 숫자는 확인 후 여기 한 곳에서만 바꾸면 된다. (공백·줄바꿈 포함해서 센다)
+CHANNEL_LIMITS = {
+    "kakao_body": 400,      # 카카오 친구톡 본문 (임시값, 카카오 가이드 확인 후 수정)
+    "insta_headline": 30,   # 인스타 헤드라인 (임시값)
+    "insta_body": 125,      # 인스타 본문: '더 보기' 전에 보이는 앞부분 기준
+    "email_subject": 40,    # 이메일 제목: "(광고) " 접두어까지 포함한 글자 수 (임시값)
+}
+
+# 이메일은 광고성 메일이라 제목 맨 앞에 붙인다. (AI가 아니라 코드가 붙인다)
+EMAIL_AD_PREFIX = "(광고) "
+
+# 화면·경고에 보여줄 채널 이름
+CHANNEL_LABELS = {
+    "kakao_body": "카톡 본문",
+    "insta_headline": "인스타 헤드라인",
+    "insta_body": "인스타 본문",
+    "email_subject": "이메일 제목",
+}
+
 # 세부 설정의 프레임워크 선택지 ("자동"이면 AI가 골라 준다)
 FRAMEWORKS = ["자동", "AIDA", "PAS"]
 
@@ -49,11 +68,40 @@ USER_TEMPLATE = """아래 상품을 타깃 페르소나에게 팔기 위한 A/B 
 - 상품 설명에 적힌 특징만 쓴다. 설명에 없는 특징(내구성, 무게, 소재, 품질, 성능 등)이나 숫자, 가격, 할인율은 만들지 않는다.
 - '최고', '최상', '1위', '완벽', '무조건' 같은 과장·최상급 표현은 쓰지 않는다.
 
+[채널별 버전 규칙] 각 안의 문구를 아래 3개 채널용으로도 바꿔 쓴다. 소구점과 사실은 그대로 유지한다.
+- 카카오 친구톡: 본문만, {kakao_max}자 이내.
+- 인스타그램 피드: 헤드라인({insta_headline_max}자 이내) + 본문({insta_body_max}자 이내).
+  피드에서는 '더 보기' 전의 앞부분만 보이므로 본문 첫 문장에 핵심(소구점)을 넣는다.
+- 이메일 제목: 제목만, {email_max}자 이내. 맨 앞의 "(광고)"는 시스템이 붙이니 쓰지 않는다.
+- 글자 수는 공백을 포함해서 세고, 한도를 넘지 않게 쓴다.
+
+[CTR 가설 규칙]
+- 각 안이 어떤 클릭률(CTR) 가설을 검증하는지 한 줄로 쓴다. 예: "A안은 가격 혜택을 먼저 보여주면 클릭률이 높아질 것이다."
+- 구체적인 % 수치나 성과 숫자는 쓰지 않는다.
+
 [출력 형식 - 이 JSON만 출력]
 {{
   "framework": "사용한 구조 (AIDA 또는 PAS)",
-  "a": {{"angle": "가격·혜택 강조 (구체적으로 한 줄)", "copy": "A안 문구"}},
-  "b": {{"angle": "페인 포인트 공감 (구체적으로 한 줄)", "copy": "B안 문구"}}
+  "a": {{
+    "angle": "가격·혜택 강조 (구체적으로 한 줄)",
+    "copy": "A안 문구",
+    "hypothesis": "A안이 검증하는 CTR 가설 한 줄",
+    "channels": {{
+      "kakao": "친구톡 본문",
+      "instagram": {{"headline": "인스타 헤드라인", "body": "인스타 본문"}},
+      "email_subject": "이메일 제목 ((광고) 제외)"
+    }}
+  }},
+  "b": {{
+    "angle": "페인 포인트 공감 (구체적으로 한 줄)",
+    "copy": "B안 문구",
+    "hypothesis": "B안이 검증하는 CTR 가설 한 줄",
+    "channels": {{
+      "kakao": "친구톡 본문",
+      "instagram": {{"headline": "인스타 헤드라인", "body": "인스타 본문"}},
+      "email_subject": "이메일 제목 ((광고) 제외)"
+    }}
+  }}
 }}"""
 
 
@@ -64,5 +112,10 @@ def build_prompt(description: str, persona: str, framework: str = "자동"):
         description=description.strip(),
         persona=persona.strip(),
         framework_guide=guide,
+        kakao_max=CHANNEL_LIMITS["kakao_body"],
+        insta_headline_max=CHANNEL_LIMITS["insta_headline"],
+        insta_body_max=CHANNEL_LIMITS["insta_body"],
+        # AI가 쓰는 제목은 "(광고) "를 뺀 나머지 부분의 한도
+        email_max=CHANNEL_LIMITS["email_subject"] - len(EMAIL_AD_PREFIX),
     )
     return SYSTEM_PROMPT, user
