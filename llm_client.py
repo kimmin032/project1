@@ -8,8 +8,10 @@ import os
 import requests
 from dotenv import load_dotenv
 
-# 사용할 모델. 나중에 수업에서 쓴 모델 이름으로 이 한 줄만 바꾸면 된다.
-MODEL = "openai/gpt-4o-mini"  # TODO: 수업에서 쓴 모델 이름으로 교체
+load_dotenv()  # MODEL을 읽기 전에 .env를 먼저 불러온다
+
+# 사용할 모델. .env의 OPENROUTER_MODEL이 있으면 그걸, 비어 있으면 수업에서 쓴 무료 모델을 쓴다.
+MODEL = os.getenv("OPENROUTER_MODEL") or "nvidia/nemotron-3-super-120b-a12b:free"
 
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
 TIMEOUT_SECONDS = 60

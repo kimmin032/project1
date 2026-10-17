@@ -23,11 +23,32 @@ def _parse_json(text: str) -> dict:
         raise LLMError("AI 답변 형식이 깨졌습니다. 다시 시도해 주세요.") from None
 
 
+# 소구점 이름이 채널 문구 맨 앞에 붙은 경우: "가격·혜택: ...", "페인 포인트 공감 - ...", "[페인 포인트] ..."
+_ANGLE_NAME = r"(?:가격\s*[·ㆍ/,]\s*혜택|페인\s*포인트)(?:\s*(?:강조|공감))?"
+_ANGLE_LABELS = [
+    re.compile(r"^[\[(]\s*" + _ANGLE_NAME + r"\s*[\])]\s*[:：\-–—]?\s*"),  # 괄호로 감싼 형태는 구분 기호가 없어도 이름표
+    re.compile(r"^" + _ANGLE_NAME + r"\s*[:：\-–—]\s*"),                    # 그냥 쓴 형태는 구분 기호가 있을 때만 이름표
+]
+
+
+def _strip_angle_label(text: str) -> str:
+    """채널 문구 앞에 붙은 소구점 이름을 지운다. 다 지워서 빈 문장이 되면 원래 문장을 돌려준다."""
+    cleaned = text.strip()
+    changed = True
+    while changed:
+        changed = False
+        for pattern in _ANGLE_LABELS:
+            new = pattern.sub("", cleaned, count=1)
+            if new != cleaned:
+                cleaned, changed = new, True
+    return cleaned or text.strip()
+
+
 def _with_ad_prefix(subject: str) -> str:
     """이메일 제목 맨 앞에 "(광고) "를 붙인다. AI가 이미 붙였으면 중복되지 않게 먼저 뗀다."""
-    subject = subject.strip()
+    subject = _strip_angle_label(subject)
     if subject.startswith("(광고)"):
-        subject = subject[len("(광고)"):].strip()
+        subject = _strip_angle_label(subject[len("(광고)"):])  # "(광고) 가격·혜택: ..." 도 처리
     return EMAIL_AD_PREFIX + subject
 
 
@@ -89,10 +110,10 @@ def make_copy(description: str, persona: str, framework: str = "자동") -> dict
         ch = v.get("channels") if isinstance(v.get("channels"), dict) else {}
         insta = ch.get("instagram") if isinstance(ch.get("instagram"), dict) else {}
         v["channels"] = {
-            "kakao": _read_text(lambda: ch["kakao"]),
+            "kakao": _strip_angle_label(_read_text(lambda: ch["kakao"])),
             "instagram": {
-                "headline": _read_text(lambda: insta["headline"]),
-                "body": _read_text(lambda: insta["body"]),
+                "headline": _strip_angle_label(_read_text(lambda: insta["headline"])),
+                "body": _strip_angle_label(_read_text(lambda: insta["body"])),
             },
             "email_subject": _with_ad_prefix(_read_text(lambda: ch["email_subject"])),
         }
