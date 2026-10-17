@@ -1,0 +1,8 @@
+# 2000년대 핑크 홈페이지용 테마: 사용자 PC가 다크 모드여도 같은 색으로 보이게 라이트로 고정한다.
+[theme]
+base = "light"
+primaryColor = "#8cc152"
+backgroundColor = "#fff0f6"
+secondaryBackgroundColor = "#fff8e1"
+textColor = "#6b4a52"
+font = "sans serif"
