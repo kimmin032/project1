@@ -8,7 +8,7 @@ import re
 
 from input_check import check_input
 from llm_client import LLMError, ask_llm
-from prompts import CHANNEL_LABELS, CHANNEL_LIMITS, EMAIL_AD_PREFIX, build_prompt
+from prompts import CHANNEL_LABELS, CHANNEL_LIMITS, EMAIL_AD_PREFIX, FRAMEWORKS, build_prompt
 
 
 def _parse_json(text: str) -> dict:
@@ -98,7 +98,10 @@ def make_copy(description: str, persona: str, framework: str = "자동") -> dict
         }
         v["checks"] = check_lengths(v)
 
-    result.setdefault("framework", framework)
+    if framework in FRAMEWORKS and framework != "자동":
+        result["framework"] = framework  # 사용자가 고른 구조는 AI 답변보다 우선
+    else:
+        result.setdefault("framework", framework)
     return result
 
 

@@ -3,7 +3,7 @@
 import streamlit as st
 
 from generator import generate
-from prompts import CHANNEL_LABELS, NO_PERSONA, PERSONAS
+from prompts import CHANNEL_LABELS, FRAMEWORK_SHORT, FRAMEWORKS, NO_PERSONA, PERSONAS
 
 st.set_page_config(page_title="A/B 마케팅 문구 생성기", page_icon="✍️")
 st.title("✍️ A/B 마케팅 문구 생성기")
@@ -16,11 +16,20 @@ description = st.text_area(
 )
 persona = st.selectbox("타깃 페르소나", [NO_PERSONA] + PERSONAS)
 
+# 세부 설정은 기본으로 접어 둔다. (채널은 3개 모두 보여주므로 선택지 없음)
+with st.expander("세부 설정", expanded=False):
+    framework = st.radio(
+        "프레임워크",
+        FRAMEWORKS,
+        index=0,
+        captions=[FRAMEWORK_SHORT[f] for f in FRAMEWORKS],
+    )
+
 # 검사·AI 호출·오류 처리는 generate()가 모두 맡는다. (어떤 경우에도 예외 없이 결과만 돌려준다)
 # 결과는 화면이 다시 그려져도 남도록 session_state에 보관하고, 버튼을 누를 때마다 통째로 교체한다.
 if st.button("카피 만들기", type="primary"):
     with st.spinner("문구를 만드는 중..."):
-        st.session_state["output"] = generate(description, persona)
+        st.session_state["output"] = generate(description, persona, framework)
 
 output = st.session_state.get("output")
 result = None
