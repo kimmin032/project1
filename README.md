@@ -1,5 +1,7 @@
 # A/B 마케팅 문구 생성기
 
+배포 주소: https://project1-9wrbt6r2wpl8jengscbhep.streamlit.app/ (오래 안 쓰면 앱이 잠들어서, 열었을 때 "get this app back up" 버튼이 나오면 누르고 1분 정도 기다리면 된다)
+
 ## 1) 목적과 사용자
 
 상품 설명과 타깃 페르소나를 입력하면 A/B 테스트용 마케팅 문구 2안을 만들어 주는 Streamlit 앱이다.
@@ -17,7 +19,7 @@ pytest                      # 테스트 실행 — 테스트 108개 통과 (2026
 ```
 
 - `OPENROUTER_API_KEY`: OpenRouter에서 발급받은 키를 `.env`에만 적는다. 커밋하지 않는다.
-- `OPENROUTER_MODEL`: 사용할 OpenRouter 모델 ID이다. 비워 두면 기본 무료 모델(`nvidia/nemotron-3-super-120b-a12b:free`)을 쓴다.
+- `OPENROUTER_MODEL`: 사용할 OpenRouter 모델 ID이다. 비워 두면 기본 무료 모델(`nvidia/nemotron-3-super-120b-a12b:free`)을 쓴다. `openai/gpt-4o-mini`를 추천한다 (무료 모델은 느리고 OpenRouter에서 사라질 수 있음).
 
 ## 3) 주요 기능 3가지
 
